@@ -74,11 +74,12 @@
 		pdfStore.addEditOperation(operation);
 
 		// Update the displayed text for live preview
-		if (selectedText) {
+		const currentSelectedText = selectedText; // Capture for null safety
+		if (currentSelectedText) {
 			const index = textItems.findIndex(item =>
-				item.text === selectedText.text &&
-				item.x === selectedText.x &&
-				item.y === selectedText.y
+				item.text === currentSelectedText.text &&
+				item.x === currentSelectedText.x &&
+				item.y === currentSelectedText.y
 			);
 
 			if (index !== -1) {
@@ -184,18 +185,18 @@
 						{@const fontSize = operation.fontSize || 12}
 						{@const displayY = pageHeight - operation.position.y}
 						{@const estimatedWidth = Math.max(
-							(operation.originalText?.length || 0) * fontSize * 0.55,
-							operation.newText.length * fontSize * 0.55
+							(operation.originalText?.length || 0) * fontSize * 0.6,
+							operation.newText.length * fontSize * 0.6
 						)}
 
 						<!-- White rectangle to cover original text -->
 						<div
 							class="text-eraser"
 							style="
-								left: {(operation.position.x - 1) * scale}px;
-								top: {(displayY - fontSize) * scale}px;
-								width: {(estimatedWidth + 4) * scale}px;
-								height: {(fontSize + 2) * scale}px;
+								left: {(operation.position.x - 2) * scale}px;
+								top: {(displayY - fontSize * 0.85) * scale}px;
+								width: {(estimatedWidth + 6) * scale}px;
+								height: {(fontSize * 1.15) * scale}px;
 							"
 						></div>
 
@@ -205,7 +206,7 @@
 								class="text-overlay"
 								style="
 									left: {operation.position.x * scale}px;
-									top: {displayY * scale}px;
+									top: {(displayY - fontSize * 0.15) * scale}px;
 									font-size: {fontSize * scale}px;
 									line-height: 1;
 								"
@@ -220,13 +221,15 @@
 			<!-- Interactive text layer for editing -->
 			<div class="text-layer" bind:this={textLayer}>
 				{#each textItems as item}
+					{@const adjustedTop = (item.y - item.fontSize * 0.85) * scale}
+					{@const adjustedHeight = item.fontSize * 1.15 * scale}
 					<button
 						class="text-item"
 						style="
-							left: {item.x * scale}px;
-							top: {item.y * scale}px;
-							width: {item.width * scale}px;
-							height: {item.height * scale}px;
+							left: {(item.x - 2) * scale}px;
+							top: {adjustedTop}px;
+							width: {(item.width + 4) * scale}px;
+							height: {adjustedHeight}px;
 							font-size: {item.fontSize * scale}px;
 						"
 						onclick={() => selectText(item)}
@@ -439,6 +442,7 @@
 
 	.text-content {
 		opacity: 0;
+
 	}
 
 

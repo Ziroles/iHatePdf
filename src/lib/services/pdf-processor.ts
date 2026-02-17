@@ -135,12 +135,18 @@ export async function editPDFText(
 					console.log('     Font size:', fontSize, 'Text widths:', oldTextWidth, '→', textWidth);
 
 					// Draw white rectangle to "erase" old text
-					// Rectangle positioned slightly above baseline to cover text
+					// Text baseline is at y, but text extends above (ascent) and below (descent)
+					// Most fonts: ascent ≈ 0.85 * fontSize, descent ≈ 0.15 * fontSize
+					const descent = fontSize * 0.15;
+					const ascent = fontSize * 0.85;
+					const rectHeight = ascent + descent + 4; // Extra padding
+					const rectY = y - descent - 2; // Start below baseline
+
 					page.drawRectangle({
-						x: x - 1,
-						y: y - 2, // Slightly below baseline
-						width: Math.max(oldTextWidth, textWidth) + 4,
-						height: fontSize + 4,
+						x: x - 2,
+						y: rectY,
+						width: Math.max(oldTextWidth, textWidth) + 6,
+						height: rectHeight,
 						color: rgb(1, 1, 1),
 						borderWidth: 0
 					});
@@ -165,15 +171,21 @@ export async function editPDFText(
 					const fontSize = operation.fontSize || 12;
 					const textWidth = operation.originalText
 						? font.widthOfTextAtSize(operation.originalText, fontSize)
-						: Math.max(200, (operation.originalText?.length || 10) * fontSize * 0.55);
+						: Math.max(200, (operation.originalText?.length || 10) * fontSize * 0.6);
 
 					console.log('  🗑️ Deleting text:', operation.originalText, 'at', operation.position);
 
+					// Same positioning logic as text-edit
+					const descent = fontSize * 0.15;
+					const ascent = fontSize * 0.85;
+					const rectHeight = ascent + descent + 4;
+					const rectY = operation.position.y - descent - 2;
+
 					page.drawRectangle({
-						x: operation.position.x - 1,
-						y: operation.position.y - 2,
-						width: textWidth + 4,
-						height: fontSize + 4,
+						x: operation.position.x - 2,
+						y: rectY,
+						width: textWidth + 6,
+						height: rectHeight,
 						color: rgb(1, 1, 1),
 						borderWidth: 0
 					});
