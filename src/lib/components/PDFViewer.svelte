@@ -11,7 +11,7 @@
 	let canvas: HTMLCanvasElement;
 	let scale = $state(1.5);
 	let isRendering = $state(false);
-	let hasRendered = $state(false);
+F	let hasRendered = $state(false);
 
 	const renderCurrentPage = async () => {
 		if (!$pdfStore.arrayBuffer || !canvas) return;

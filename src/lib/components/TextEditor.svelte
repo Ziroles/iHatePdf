@@ -85,16 +85,11 @@
 	<div class="editor-header">
 		<h3>Modifications en cours</h3>
 		<div class="operation-count">
-			{$pdfStore.editOperations.length} modification(s)
+			{$pdfStore.editOperations.length} Mod.
 		</div>
 	</div>
 
-	<div class="editor-info">
-		<svg class="info-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-			<path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-		</svg>
-		<p>Cliquez sur n'importe quel texte dans le PDF pour le modifier. Les modifications s'affichent <strong>directement sur le document</strong> pour prévisualisation. Cliquez sur "Enregistrer" pour les appliquer définitivement.</p>
-	</div>
+
 
 	<div class="editor-actions">
 		<button
@@ -184,8 +179,8 @@
 	.operation-count {
 		background: #059669;
 		color: white;
-		padding: 0.25rem 0.75rem;
-		border-radius: 9999px;
+		padding: 0.25rem 2rem;
+		border-radius: 99px;
 		font-size: 0.875rem;
 		font-weight: 600;
 	}
@@ -266,9 +261,9 @@
 	.editor-actions {
 		display: flex;
 		gap: 1rem;
-		margin-top: 1.5rem;
-		padding-top: 1.5rem;
-		border-top: 2px solid #d1fae5;
+
+
+
 	}
 
 	.operations-list {
