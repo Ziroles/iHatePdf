@@ -11,6 +11,15 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import type { PDFMetadata, PDFEditOperation } from '$lib/types/pdf.types';
 
+/** Parse a hex color string (#rrggbb) into pdf-lib rgb() values (0–1 range) */
+function hexToRgb(hex: string): ReturnType<typeof rgb> {
+	const clean = hex.replace('#', '');
+	const r = parseInt(clean.substring(0, 2), 16) / 255;
+	const g = parseInt(clean.substring(2, 4), 16) / 255;
+	const b = parseInt(clean.substring(4, 6), 16) / 255;
+	return rgb(r, g, b);
+}
+
 /**
  * Loads and parses a PDF file
  * @param arrayBuffer - PDF file data
@@ -147,7 +156,7 @@ export async function editPDFText(
 						y: rectY,
 						width: Math.max(oldTextWidth, textWidth) + 6,
 						height: rectHeight,
-						color: rgb(1, 1, 1),
+						color: hexToRgb(operation.eraserColor ?? '#ffffff'),
 						borderWidth: 0
 					});
 
@@ -186,7 +195,7 @@ export async function editPDFText(
 						y: rectY,
 						width: textWidth + 6,
 						height: rectHeight,
-						color: rgb(1, 1, 1),
+						color: hexToRgb(operation.eraserColor ?? '#ffffff'),
 						borderWidth: 0
 					});
 					break;
@@ -225,7 +234,7 @@ export async function savePDF(pdfDoc: PDFDocument): Promise<Uint8Array> {
  * @param filename - Desired filename
  */
 export function downloadPDF(pdfBytes: Uint8Array, filename: string): void {
-	const blob = new Blob([pdfBytes.buffer], { type: 'application/pdf' });
+	const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
 	const url = URL.createObjectURL(blob);
 	const link = document.createElement('a');
 	link.href = url;

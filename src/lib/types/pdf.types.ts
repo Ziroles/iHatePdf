@@ -41,6 +41,8 @@ export interface PDFEditOperation {
 	position?: { x: number; y: number };
 	fontSize?: number;
 	fontName?: string;
+	/** Hex color used to cover the original text, e.g. "#ffffff". Defaults to white. */
+	eraserColor?: string;
 }
 
 export interface PDFProcessingResult {

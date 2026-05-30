@@ -17,6 +17,7 @@
 	let selectedText: TextItem | null = $state(null);
 	let editingText = $state('');
 	let showEditModal = $state(false);
+	let eraserColor = $state('#ffffff');
 	let pageHeight = $state(0); // Store PDF page height for coordinate conversion
 
 	const renderCurrentPage = async () => {
@@ -50,9 +51,75 @@
 		}
 	};
 
+	/** Sample the canvas background color around a text item (NOT on the text itself) */
+	const sampleBackgroundColor = (item: TextItem): string => {
+		if (!canvas) return '#ffffff';
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return '#ffffff';
+
+		const top    = Math.round((item.y - item.fontSize * 0.85) * scale);
+		const bottom = Math.round((item.y + item.fontSize * 0.3)  * scale);
+		const left   = Math.round(item.x * scale);
+		const right  = Math.round((item.x + item.width) * scale);
+		const lineH  = bottom - top;
+
+		const samples: [number, number, number][] = [];
+
+		const addPixel = (x: number, y: number) => {
+			const cx = Math.max(0, Math.min(Math.round(x), canvas.width  - 1));
+			const cy = Math.max(0, Math.min(Math.round(y), canvas.height - 1));
+			const d = ctx.getImageData(cx, cy, 1, 1).data;
+			samples.push([d[0], d[1], d[2]]);
+		};
+
+		// 1. Strips well outside the bounding box (2× line height away)
+		const gap = lineH * 2;
+		const step = Math.max(2, Math.round((right - left) / 16));
+		for (let x = left; x <= right; x += step) {
+			addPixel(x, top  - gap);
+			addPixel(x, bottom + gap);
+		}
+
+		// 2. Scan the interior of the text row column by column,
+		//    collect only LIGHT pixels (likely background between glyphs)
+		for (let x = left; x <= right; x += step) {
+			const cx = Math.max(0, Math.min(Math.round(x), canvas.width - 1));
+			// scan vertically inside the row, collect each pixel
+			for (let y = top; y <= bottom; y++) {
+				const cy = Math.max(0, Math.min(y, canvas.height - 1));
+				const d = ctx.getImageData(cx, cy, 1, 1).data;
+				const brightness = (d[0] + d[1] + d[2]) / 3;
+				// Only keep bright pixels (background, not ink)
+				if (brightness > 160) samples.push([d[0], d[1], d[2]]);
+			}
+		}
+
+		if (samples.length === 0) return '#ffffff';
+
+		// Most-frequent color bucket (group by 8)
+		const bucket = (v: number) => Math.round(v / 8) * 8;
+		const freq = new Map<string, { count: number; r: number; g: number; b: number }>();
+		for (const [r, g, b] of samples) {
+			const key = `${bucket(r)},${bucket(g)},${bucket(b)}`;
+			const prev = freq.get(key);
+			if (prev) { prev.count++; }
+			else { freq.set(key, { count: 1, r, g, b }); }
+		}
+		const best = [...freq.values()].sort((a, b) => b.count - a.count)[0];
+		const hex = (v: number) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0');
+		const sampled = `#${hex(best.r)}${hex(best.g)}${hex(best.b)}`;
+
+		// Safety: if sampled color is too dark (likely text color, not background), fallback to white
+		const brightness = (best.r * 299 + best.g * 587 + best.b * 114) / 1000;
+		if (brightness < 80) return '#ffffff';
+
+		return sampled;
+	};
+
 	const selectText = (item: TextItem) => {
 		selectedText = item;
 		editingText = item.text;
+		eraserColor = sampleBackgroundColor(item);
 		showEditModal = true;
 	};
 
@@ -67,8 +134,9 @@
 			pageNumber: $pdfStore.currentPage,
 			originalText: selectedText.text,
 			newText: editingText,
-			position: { x: selectedText.x, y: pdfY }, // Use PDF coordinates
-			fontSize: selectedText.fontSize
+			position: { x: selectedText.x, y: pdfY },
+			fontSize: selectedText.fontSize,
+			eraserColor
 		};
 
 		pdfStore.addEditOperation(operation);
@@ -98,6 +166,7 @@
 		showEditModal = false;
 		selectedText = null;
 		editingText = '';
+		eraserColor = '#ffffff';
 	};
 
 	const nextPage = () => {
@@ -184,19 +253,21 @@
 					{#if operation.pageNumber === $pdfStore.currentPage && operation.position}
 						{@const fontSize = operation.fontSize || 12}
 						{@const displayY = pageHeight - operation.position.y}
+						{@const opH = fontSize} <!-- height = fontSize (PDF.js height ≈ fontSize for most fonts) -->
 						{@const estimatedWidth = Math.max(
 							(operation.originalText?.length || 0) * fontSize * 0.6,
 							operation.newText.length * fontSize * 0.6
 						)}
 
-						<!-- White rectangle to cover original text -->
+						<!-- Rectangle covering original text with chosen color -->
 						<div
 							class="text-eraser"
 							style="
-								left: {(operation.position.x - 2) * scale}px;
-								top: {(displayY - fontSize * 0.85) * scale}px;
-								width: {(estimatedWidth + 6) * scale}px;
-								height: {(fontSize * 1.15) * scale}px;
+								left: {operation.position.x * scale}px;
+								top: {(displayY - opH) * scale}px;
+								width: {(estimatedWidth + 4) * scale}px;
+								height: {opH * scale}px;
+								background: {operation.eraserColor ?? '#ffffff'};
 							"
 						></div>
 
@@ -206,7 +277,7 @@
 								class="text-overlay"
 								style="
 									left: {operation.position.x * scale}px;
-									top: {(displayY - fontSize * 0.15) * scale}px;
+									top: {(displayY - opH) * scale}px;
 									font-size: {fontSize * scale}px;
 									line-height: 1;
 								"
@@ -221,15 +292,15 @@
 			<!-- Interactive text layer for editing -->
 			<div class="text-layer" bind:this={textLayer}>
 				{#each textItems as item}
-					{@const adjustedTop = (item.y - item.fontSize * 0.85) * scale}
-					{@const adjustedHeight = item.fontSize * 1.15 * scale}
+					{@const itemH = (item.height > 0 ? item.height : item.fontSize) * scale}
+					{@const itemTop = (item.y - (item.height > 0 ? item.height : item.fontSize * 0.85)) * scale}
 					<button
 						class="text-item"
 						style="
-							left: {(item.x - 2) * scale}px;
-							top: {adjustedTop}px;
-							width: {(item.width + 4) * scale}px;
-							height: {adjustedHeight}px;
+							left: {item.x * scale}px;
+							top: {itemTop}px;
+							width: {item.width * scale}px;
+							height: {itemH}px;
 							font-size: {item.fontSize * scale}px;
 						"
 						onclick={() => selectText(item)}
@@ -276,6 +347,21 @@
 						bind:value={editingText}
 						class="input-text"
 					/>
+				</div>
+
+				<div class="form-group">
+					<label for="eraser-color">Couleur de masquage :</label>
+					<div class="color-picker-row">
+						<input
+							type="color"
+							id="eraser-color"
+							bind:value={eraserColor}
+							class="input-color"
+						/>
+						<span class="color-hint">
+							Détectée automatiquement depuis le fond — ajustez si nécessaire
+						</span>
+					</div>
 				</div>
 
 				<div class="info-text">
@@ -372,6 +458,8 @@
 
 	.pdf-wrapper {
 		position: relative;
+		display: inline-block;
+		line-height: 0; /* remove any inline gap below canvas */
 	}
 
 	canvas {
@@ -554,6 +642,27 @@
 		border-radius: 0.5rem;
 		font-size: 1rem;
 		font-family: inherit;
+	}
+
+	.color-picker-row {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+	}
+
+	.input-color {
+		width: 2.75rem;
+		height: 2.75rem;
+		border: 2px solid #d1fae5;
+		border-radius: 0.5rem;
+		cursor: pointer;
+		padding: 0.1rem;
+		background: white;
+	}
+
+	.color-hint {
+		font-size: 0.8125rem;
+		color: #6b7280;
 	}
 
 	.input-text:focus {
