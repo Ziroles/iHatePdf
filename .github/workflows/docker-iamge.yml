@@ -27,5 +27,21 @@ jobs:
         with:
           context: .
           push: true
+          tags: |
+            ghcr.io/ziroles/ihatepdf:${{ github.sha }}
+            ghcr.io/ziroles/ihatepdf:latest
 
-          tags: ghcr.io/ziroles/ihatepdf:latest
+      - name: Trigger K8s Deploy
+        run: |
+          curl -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ secrets.K8S_REPO_TOKEN }}" \
+            https://api.github.com/repos/ziroles/k8s/dispatches \
+            -d '{
+              "event_type": "update_image", 
+              "client_payload": {
+                "project": "ihatepdf",
+                "image": "ghcr.io/ziroles/ihatepdf",
+                "sha": "${{ github.sha }}"
+              }
+            }'
