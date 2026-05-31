@@ -1,42 +1,43 @@
-# sv
+# iHatePdf
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A privacy-first PDF editor that runs entirely in the browser - no server, no uploads, no data leaving your machine.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+- **View & edit text** - click any text block on the PDF to edit it in place
+- **Add text** - place new text anywhere on the page
+- **Security validation** - every file is checked for embedded JS, malicious actions, and invalid signatures before processing
+- **Export** - download the modified PDF instantly
 
-```sh
-# create a new project
-npx sv create my-app
-```
+> Merge and split features are planned but not yet implemented.
 
-To recreate this project with the same configuration:
+## Tech stack
 
-```sh
-# recreate this project
-npx sv create --template minimal --types ts --add prettier eslint tailwindcss="plugins:typography,forms" --install npm iHatePdf
-```
+- [SvelteKit](https://kit.svelte.dev/) + TypeScript
+- [PDF.js](https://mozilla.github.io/pdf.js/) for rendering
+- [pdf-lib](https://pdf-lib.js.org/) for editing (overlay approach - white rectangle + redrawn text)
+- Tailwind CSS v4
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Getting started
 
 ```sh
+npm install
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
-
-To create a production version of your app:
+## Docker
 
 ```sh
-npm run build
+docker build -t ihatepdf .
+docker run -p 3000:3000 ihatepdf
 ```
 
-You can preview the production build with `npm run preview`.
+## Scripts
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+| Command | Description |
+|---|---|
+| `npm run dev` | Start dev server |
+| `npm run build` | Production build |
+| `npm run check` | Type-check with svelte-check |
+| `npm run lint` | Lint + format check |
+| `npm run format` | Auto-format |
